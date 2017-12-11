@@ -1,0 +1,7 @@
+package Marshal
+
+sourcedir = src
+modules = Util
+        , BitVector
+        , Core
+        , Combinators
