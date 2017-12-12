@@ -5,3 +5,5 @@ modules = Util
         , BitVector
         , Core
         , Codecs
+
+opts = "--partial-eval"

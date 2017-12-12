@@ -1,5 +1,7 @@
 module Codecs
 
+import Data.Bits
+
 import Util
 import BitVector
 import Core
@@ -18,7 +20,7 @@ boolCodec =
        No _ => Left $ insufficientBits 1 0
        Yes prf => Right $ MkDecodeRes (head {ok=prf} bitv) (BitVector.tail {ok=prf} bitv))
 
--- INT
+-- INT & BITS
 
 integerCodec : (bits : Integer) -> (sign : Bool) -> (ord : ByteOrdering) -> Codec Integer
 integerCodec bits sign ord =
@@ -39,10 +41,27 @@ integerCodec bits sign ord =
          else Left $ insufficientBits bits (size bitv))
 
 -- TODO Int platform size?
-intCodec : (bits : Integer) -> (sign : Bool) -> (ord : ByteOrdering) -> Codec Int
-intCodec bits sign ord =
-  let (MkCodec e d) = integerCodec bits sign ord in
+intCodec : (sign : Bool) -> (ord : ByteOrdering) -> Codec Int
+intCodec sign ord =
+  let (MkCodec e d) = integerCodec 64 sign ord in
   (MkCodec (contramap (cast {to=Integer}) e) (map fromInteger d))
+
+bitsCodec : Codec (Bits n)
+bitsCodec {n} =
+  MkCodec
+  (MkEncoder $ \bn => MkAttempt $ Right (parseBits bn))
+  (MkDecoder $ \bitv => MkAttempt $
+    let n' = toIntegerNat n in
+    if sizeGTE bitv n'
+      then Right $ MkDecodeRes ((toBits n . BitVector.take n') bitv) (BitVector.drop n' bitv)
+      else Left $ insufficientBits n' (size bitv))
+
+-- NAT
+
+natCodec : (bits : Integer) -> Codec Nat
+natCodec bits =
+  let (MkCodec e d) = integerCodec bits False BigEndian in
+  (MkCodec (contramap (cast {to=Integer}) e) (map (fromInteger) d))
 
 -- LIST
 
@@ -66,8 +85,8 @@ listCodec cdc =
 
 charCodec : Codec Char
 charCodec =
-  let (MkCodec e d) = intCodec 16 False BigEndian in -- TODO platform dependent?
-  (MkCodec (contramap ord e) (map chr d))
+  let (MkCodec e d) = integerCodec 16 False BigEndian in -- TODO platform dependent?
+  (MkCodec (contramap (cast {to=Integer} . ord) e) (map (chr . fromInteger) d))
 
 -- STRING
 
