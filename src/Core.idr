@@ -54,7 +54,7 @@ Semigroup a => Semigroup (Attempt a) where
 Monoid a => Monoid (Attempt a) where
   neutral = MkAttempt $ Right neutral
 
--- workers
+-- Encoder
 
 data Encoder : a -> Type where
   MkEncoder : (encode : (x : a) -> Attempt BitVector) -> Encoder a
@@ -62,23 +62,23 @@ data Encoder : a -> Type where
 contramap : (f : b -> a) -> Encoder a -> Encoder b
 contramap f (MkEncoder encode) = MkEncoder (encode . f)
 
+-- Decoder
+
 data Decoder : a -> Type where
   MkDecoder : (decode : (bits : BitVector) -> Attempt (DecodeRes a)) -> Decoder a
 
 Functor Decoder where
   map f (MkDecoder decode) = MkDecoder (map (map f) . decode)
-  
+
+-- Codec 
+
 data Codec : a -> Type where
   MkCodec : (encoder : Encoder a) -> (decoder : Decoder a) -> Codec a 
+
+encode : Codec a -> a -> Attempt BitVector
+encode (MkCodec (MkEncoder e) (MkDecoder _)) a = e a
+
+decode : Codec a -> BitVector -> Attempt (DecodeRes a)
+decode (MkCodec (MkEncoder _) (MkDecoder d)) bv = d bv
     
---Profunctor Codec where  
-
-{-
-interface Decoder a where
-  decode : (bits : BitVector) -> Either MErr (DecodeRes a)
-
-interface Encoder a where
-  encode : (x : a) -> Either MErr BitVector
-
-interface (Decoder a, Encoder a) => Codec a where
--}    
+--Profunctor Codec where

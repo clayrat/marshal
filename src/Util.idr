@@ -57,5 +57,3 @@ doubleVariety d =
         then
           if d >= 0.0 then PInf else MInf   
         else D d
-
-

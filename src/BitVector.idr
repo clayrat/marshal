@@ -17,6 +17,9 @@ showBin (x :: xs) = (if x then "1" else "0") ++ showBin xs
 isEmpty : BitVector -> Bool
 isEmpty = isNil
 
+empty : BitVector
+empty = []
+
 one : (n : Nat) -> BitVector 
 one  Z    = []
 one (S Z) = [True]

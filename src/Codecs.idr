@@ -44,6 +44,24 @@ intCodec bits sign ord =
   let (MkCodec e d) = integerCodec bits sign ord in 
   (MkCodec (contramap (cast {to=Integer}) e) (map fromInteger d))
 
+-- LIST
+
+listCodec : (cdc : Codec a) -> Codec (List a)
+listCodec cdc = 
+  MkCodec
+    (MkEncoder $ \la => 
+      foldl (\att,a => att <+> encode cdc a) (MkAttempt $ Right $ BitVector.empty) la
+    )
+    (MkDecoder $ \bitv => go bitv [] 10000)  -- TODO a ^ param
+  where 
+  go : BitVector -> List a -> Int -> Attempt (DecodeRes (List a))
+  go bv l cnt = 
+    if isEmpty bv || cnt == 0
+      then MkAttempt (Right (MkDecodeRes (List.reverse l) bv))
+      else case decode cdc bv of 
+        MkAttempt (Left err) => MkAttempt (Left err)
+        MkAttempt (Right (MkDecodeRes x rem)) => go rem (x :: l) (assert_smaller cnt (cnt-1))
+
 {-  
 -- Double IEEE-754  
 
@@ -90,14 +108,15 @@ doubleCodec ord =
                  (MkDecodeRes snf r3) <- d3 r2
                  let fn = readDouble snf
                  let sh = exp - bias
-                 let d = ?ldexp {-if exp == 0 && snf == 0
-                         then 0.0
-                         else if sh == 128 && snf /= 0 
-                          then sqrt (-1.0) 
-                          else if sh == 128 && snf == 0 
-                           then (if s then (-1.0/0/0) else (1.0/0.0))
-                           else if sh > -127 
-                            then ?ldexp
-                           -- if s then -d else  
+                 let d = ?ldexp 
+                      -- if exp == 0 && snf == 0
+                      -- then 0.0
+                      -- else if sh == 128 && snf /= 0 
+                      --  then sqrt (-1.0) 
+                      --  else if sh == 128 && snf == 0 
+                      --   then (if s then (-1.0/0/0) else (1.0/0.0))
+                      --   else if sh > -127 
+                      --    then ?ldexp
+                  -- if s then -d else  
                  pure (MkDecodeRes d r3))
                            -}
