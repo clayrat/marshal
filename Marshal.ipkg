@@ -4,4 +4,4 @@ sourcedir = src
 modules = Util
         , BitVector
         , Core
-        , Combinators
+        , Codecs

@@ -20,17 +20,50 @@ mapRem fr (MkDecodeRes x rem) = MkDecodeRes x (fr rem)
 MErr : Type
 MErr = String
 
-insufficientBits : Int -> Int -> MErr
+insufficientBits : Integer -> Integer -> MErr
 insufficientBits n m = "expected " ++ show n ++ " bits, received " ++ show m
 
+data Attempt : a -> Type where
+  MkAttempt : Either MErr a -> Attempt a
+
+Show a => Show (Attempt a) where
+  show (MkAttempt (Left e)) = "Error : " ++ e
+  show (MkAttempt (Right a)) = show a
+
+Functor Attempt where
+  map _ (MkAttempt (Left e)) = MkAttempt (Left e)
+  map f (MkAttempt (Right a)) = MkAttempt (Right (f a))
+
+Applicative Attempt where
+  pure a = MkAttempt $ Right a
+  (MkAttempt (Left e1)) <*> (MkAttempt (Left e2)) = MkAttempt (Left (e1 ++ ";" ++ e2))
+  (MkAttempt (Left e1)) <*> (MkAttempt (Right _)) = MkAttempt (Left e1)  
+  (MkAttempt (Right _)) <*> (MkAttempt (Left e2)) = MkAttempt (Left e2)  
+  (MkAttempt (Right f)) <*> (MkAttempt (Right a)) = MkAttempt (Right (f a)) 
+
+Monad Attempt where
+  (MkAttempt (Left e))  >>= f = MkAttempt (Left e)
+  (MkAttempt (Right a)) >>= f = f a
+
+Semigroup a => Semigroup (Attempt a) where
+  (<+>) (MkAttempt (Right a)) (MkAttempt (Right b)) = MkAttempt (Right (a <+> b))
+  (<+>) (MkAttempt (Right _)) (MkAttempt (Left e2)) = MkAttempt (Left e2)
+  (<+>) (MkAttempt (Left e1)) (MkAttempt (Right _)) = MkAttempt (Left e1)
+  (<+>) (MkAttempt (Left e1)) (MkAttempt (Left e2)) = MkAttempt (Left (e1 ++ ";" ++ e2))
+
+Monoid a => Monoid (Attempt a) where
+  neutral = MkAttempt $ Right neutral
+
+-- workers
+
 data Encoder : a -> Type where
-  MkEncoder : (encode : (x : a) -> Either MErr BitVector) -> Encoder a
+  MkEncoder : (encode : (x : a) -> Attempt BitVector) -> Encoder a
 
 contramap : (f : b -> a) -> Encoder a -> Encoder b
 contramap f (MkEncoder encode) = MkEncoder (encode . f)
 
 data Decoder : a -> Type where
-  MkDecoder : (decode : (bits : BitVector) -> Either MErr (DecodeRes a)) -> Decoder a
+  MkDecoder : (decode : (bits : BitVector) -> Attempt (DecodeRes a)) -> Decoder a
 
 Functor Decoder where
   map f (MkDecoder decode) = MkDecoder (map (map f) . decode)

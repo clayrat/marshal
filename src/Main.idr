@@ -1,17 +1,16 @@
 module Main
 
+import Util
 import BitVector
 import Core
-import Combinators
+import Codecs
 
 main : IO ()
-main = 
-  do let (MkCodec (MkEncoder e) (MkDecoder d)) = intCodec 5 False BigEndian 
-     let enc = e 31
-     case enc of 
-       Left err => printLn err
-       Right res => 
-         do printLn res
-            case d res of 
-              Left err => printLn err
-              Right res2 => printLn res2
+main = printLn "hi"
+
+{-  do let (MkCodec (MkEncoder e) (MkDecoder d)) = doubleCodec BigEndian 
+     n <- getLine
+     let res = e (cast {to=Double} n)
+     printLn $ map showBin res 
+     printLn $ res >>= d
+-}

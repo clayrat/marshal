@@ -10,6 +10,10 @@ data ByteOrdering = BigEndian | LittleEndian
 BitVector : Type
 BitVector = List Bool
 
+showBin : BitVector -> String
+showBin [] = ""
+showBin (x :: xs) = (if x then "1" else "0") ++ showBin xs
+
 isEmpty : BitVector -> Bool
 isEmpty = isNil
 
@@ -21,10 +25,10 @@ one (S n) = False :: one n
 zero : (n : Nat) -> BitVector 
 zero n = replicate n False
 
-size : BitVector -> Int
+size : BitVector -> Integer
 size = cast . List.length
 
-sizeGTE : BitVector -> Int -> Bool
+sizeGTE : BitVector -> Integer -> Bool
 sizeGTE bv i = size bv >= i
 
 head : (b : BitVector) -> {auto ok : NonEmpty b} -> Bool
@@ -33,21 +37,27 @@ head = List.head
 tail : (b : BitVector) -> {auto ok : NonEmpty b} -> BitVector
 tail = List.tail
 
-take : (n : Int) -> (b : BitVector) -> BitVector
+take : (n : Integer) -> (b : BitVector) -> BitVector
 take n = List.take (cast n)
 
-drop : (n : Int) -> (b : BitVector) -> BitVector
+drop : (n : Integer) -> (b : BitVector) -> BitVector
 drop n = List.drop (cast n)
 
-fromInteger : (i : Integer) -> (bits : Int) -> (ord : ByteOrdering) -> BitVector
-fromInteger i bits ord = 
+(++) : BitVector -> BitVector -> BitVector
+(++) = List.(++)
+
+parseInteger : (i : Integer) -> (bits : Integer) -> (ord : ByteOrdering) -> BitVector
+parseInteger i bits ord = 
 -- TODO ByteOrdering    
-  go i bits [] 
+  if i >= 0 
+    then go False i bits [] 
+    else go True (-i-1) bits [] 
   where
-    go : (i : Integer) -> (bits : Int) -> (val : BitVector) -> BitVector
-    go _ 0    val = val
-    go i bits val with (divides i 2)
-      go ((2 * div) + mod) bits val | DivBy _ = go div (assert_smaller bits (bits-1)) ((mod == 1) :: val)
+    go : (neg : Bool) -> (i : Integer) -> (bits : Integer) -> (val : BitVector) -> BitVector
+    go _   _ 0    val = val
+    go neg i bits val with (divides i 2)
+      go True ((2 * div) + mod) bits val | DivBy _ = assert_total $ go True div (bits-1) ((mod /= 1) :: val)
+      go False ((2 * div) + mod) bits val | DivBy _ = assert_total $ go False div (bits-1) ((mod == 1) :: val)
     
 toInteger : (sign : Bool) -> (ord : ByteOrdering) -> (b : BitVector) -> Integer
 toInteger sign ord b = 
