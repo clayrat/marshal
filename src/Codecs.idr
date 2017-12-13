@@ -1,5 +1,6 @@
 module Codecs
 
+import Data.Vect
 import Data.Bits
 
 import Util
@@ -95,7 +96,32 @@ stringCodec =
   let (MkCodec e d) = listCodec charCodec in
   (MkCodec (contramap unpack e) (map pack d))
 
-{-
+-- VECT
+
+vectCodec : Codec a -> Codec (Vect n a)
+vectCodec {n} cdc =
+  MkCodec
+    (MkEncoder $ \la =>
+      foldl (\att,a => att <+> encode cdc a) (MkAttempt $ Right $ BitVector.empty) la
+    )
+    (MkDecoder $ \bitv => go n bitv Z [])  -- TODO a ^ param
+  where
+  go : (d : Nat) -> BitVector ->(k : Nat) -> Vect k a -> Attempt (DecodeRes (Vect n a))  -- recurse on nat to convince termination checker
+  go Z bv k v = 
+    case decEq k n of 
+      Yes prf => rewrite sym prf in 
+                 MkAttempt (Right (MkDecodeRes v bv))
+      No _ => MkAttempt (Left ("Expected " ++ show n ++ " elements"))
+  go (S d) bv k v = 
+    if isEmpty bv 
+      then go d bv k v 
+       else 
+        case decode cdc bv of
+          MkAttempt (Left err) => MkAttempt (Left err)
+          MkAttempt (Right (MkDecodeRes x rem)) => 
+            go d rem (S k) (rewrite plusCommutative 1 k in v ++ [x])
+
+          {-
 -- Double IEEE-754
 
 readDouble : Integer -> Double
