@@ -65,7 +65,7 @@ natCodec bits =
   (MkCodec (contramap (cast {to=Integer}) e) (map (fromInteger) d))
 
 -- LIST
-
+-- TODO length-encoded version? mark greedy codecs?
 listCodec : (cdc : Codec a) -> Codec (List a)
 listCodec cdc =
   MkCodec
@@ -90,7 +90,7 @@ charCodec =
   (MkCodec (contramap (cast {to=Integer} . ord) e) (map (chr . fromInteger) d))
 
 -- STRING
-
+-- TODO length-encoded version? mark greedy codecs?
 stringCodec : Codec String
 stringCodec =
   let (MkCodec e d) = listCodec charCodec in
@@ -120,6 +120,24 @@ vectCodec {n} cdc =
           MkAttempt (Left err) => MkAttempt (Left err)
           MkAttempt (Right (MkDecodeRes x rem)) => 
             go d rem (S k) (rewrite plusCommutative 1 k in v ++ [x])
+
+-- write sizes of both? mark greedy?
+pairCodec : .{a, b : Type} -> (cdca : Codec a) -> (cdcb : Codec b) -> Codec (Pair a b)            
+pairCodec {a} {b} cdca cdcb =
+  MkCodec 
+--    (let e = \ab => --let t1 = fst ab 
+    --tt = 
+  --         encode cdca (fst ab) <+> encode cdcb (snd ab) in 
+       (MkEncoder {a=Pair a b} $ \ab : Pair a b => --let t1 = fst ab 
+                        --tt = 
+                          encode cdca (fst ab) <+> encode cdcb (snd ab) 
+                      --  in 
+                      -- ?wat
+                        )
+    (MkDecoder $ \bitv =>
+      do (MkDecodeRes a r1) <- decode cdca bitv
+         (MkDecodeRes b r2) <- decode cdcb r1
+         pure (MkDecodeRes (a,b) r2))
 
           {-
 -- Double IEEE-754
