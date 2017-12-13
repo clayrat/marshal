@@ -108,10 +108,11 @@ vectCodec {n} cdc =
   where
   go : (d : Nat) -> BitVector ->(k : Nat) -> Vect k a -> Attempt (DecodeRes (Vect n a))  -- recurse on nat to convince termination checker
   go Z bv k v = 
+    MkAttempt $
     case decEq k n of 
       Yes prf => rewrite sym prf in 
-                 MkAttempt (Right (MkDecodeRes v bv))
-      No _ => MkAttempt (Left ("Expected " ++ show n ++ " elements"))
+                 Right (MkDecodeRes v bv)
+      No _ => Left ("Expected " ++ show n ++ " elements")
   go (S d) bv k v = 
     if isEmpty bv 
       then go d bv k v 
@@ -122,18 +123,11 @@ vectCodec {n} cdc =
             go d rem (S k) (rewrite plusCommutative 1 k in v ++ [x])
 
 -- write sizes of both? mark greedy?
-pairCodec : .{a, b : Type} -> (cdca : Codec a) -> (cdcb : Codec b) -> Codec (Pair a b)            
-pairCodec {a} {b} cdca cdcb =
+pairCodec : (cdca : Codec a) -> (cdcb : Codec b) -> Codec (Pair a b)            
+pairCodec cdca cdcb =
   MkCodec 
---    (let e = \ab => --let t1 = fst ab 
-    --tt = 
-  --         encode cdca (fst ab) <+> encode cdcb (snd ab) in 
-       (MkEncoder {a=Pair a b} $ \ab : Pair a b => --let t1 = fst ab 
-                        --tt = 
-                          encode cdca (fst ab) <+> encode cdcb (snd ab) 
-                      --  in 
-                      -- ?wat
-                        )
+    (MkEncoder $ \ab =>
+       encode cdca (fst ab) <+> encode cdcb (snd ab))
     (MkDecoder $ \bitv =>
       do (MkDecodeRes a r1) <- decode cdca bitv
          (MkDecodeRes b r2) <- decode cdcb r1
