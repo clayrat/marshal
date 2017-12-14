@@ -62,6 +62,9 @@ data Encoder : a -> Type where
 contramap : (f : b -> a) -> Encoder a -> Encoder b
 contramap f (MkEncoder encode) = MkEncoder (encode . f)
 
+runE : (Encoder a) -> a -> Attempt BitVector
+runE (MkEncoder encode) a = encode a
+
 -- Decoder
 
 data Decoder : a -> Type where
@@ -69,6 +72,9 @@ data Decoder : a -> Type where
 
 Functor Decoder where
   map f (MkDecoder decode) = MkDecoder (map (map f) . decode)
+
+runD : (Decoder a) -> BitVector -> Attempt (DecodeRes a)
+runD (MkDecoder decode) bv = decode bv
 
 -- Codec 
 
@@ -82,3 +88,6 @@ decode : Codec a -> BitVector -> Attempt (DecodeRes a)
 decode (MkCodec (MkEncoder _) (MkDecoder d)) bv = d bv
     
 --Profunctor Codec where
+
+dimap : (f : b -> a) -> (g : a -> b) -> Codec a -> Codec b
+dimap f g (MkCodec e d) = MkCodec (contramap f e) (map g d)

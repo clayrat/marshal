@@ -133,6 +133,19 @@ pairCodec cdca cdcb =
          (MkDecodeRes b r2) <- decode cdcb r1
          pure (MkDecodeRes (a,b) r2))
 
+eitherTaggedCodec : (cdca : Codec a) -> (cdcb : Codec b) -> Codec (Either a b)          
+eitherTaggedCodec cdca@(MkCodec ea da) cdcb@(MkCodec eb db) =
+  let cdct = boolCodec in
+  MkCodec 
+    (MkEncoder $ \ab => 
+       case ab of 
+         Left a => encode cdct False <+> encode cdca a
+         Right b => encode cdct True <+> encode cdcb b)
+    (MkDecoder $ \bitv =>
+      do (MkDecodeRes t r1) <- decode cdct bitv
+         (MkDecodeRes ab r2) <- if t then runD (map Right db) r1 else runD (map Left da) r1
+         pure (MkDecodeRes ab r2))
+
           {-
 -- Double IEEE-754
 
