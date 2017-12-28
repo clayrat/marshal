@@ -63,17 +63,19 @@ parseInteger i bits ord =
       go True ((2 * div) + mod) bits val | DivBy _ = assert_total $ go True div (bits-1) ((mod /= 1) :: val)
       go False ((2 * div) + mod) bits val | DivBy _ = assert_total $ go False div (bits-1) ((mod == 1) :: val)
 
+bitsZero : Bits n
+bitsZero = intToBits 0 
+
+bitsOne : Bits n
+bitsOne = intToBits 1 
+
 parseBits : (bits : Bits n) -> BitVector
 parseBits {n=Z} _ = []
-parseBits {n=S k} bits = go (S k) (b1 `shiftLeft` intToBits {n=S k} (cast k)) []
+parseBits {n=S k} bits = go (S k) (bitsOne `shiftLeft` intToBits {n=S k} (cast k)) []
   where
-    b0 : Bits n
-    b0 = intToBits 0
-    b1 : Bits n
-    b1 = intToBits 1
     go : (m : Nat) -> (mask : Bits (S k)) -> (acc : BitVector) -> BitVector
     go Z _ acc = reverse acc
-    go (S m) mask acc = go m (shiftRightLogical mask b1) (((mask `Bits.and` bits) /= b0) :: acc)
+    go (S m) mask acc = go m (shiftRightLogical mask bitsOne) (((mask `Bits.and` bits) /= bitsZero) :: acc)
 
 toInteger : (sign : Bool) -> (ord : ByteOrdering) -> (b : BitVector) -> Integer
 toInteger sign ord b =
@@ -96,14 +98,10 @@ toBits : (n : Nat) -> (b : BitVector) -> Bits n
 toBits Z _ = intToBits {n=0} 0
 toBits n@(S _) b =
   case nonEmpty b of
-    No _ => b0
-    Yes prf => go n b b0
+    No _ => bitsZero
+    Yes prf => go n b bitsZero
   where
-  b0 : Bits n
-  b0 = intToBits 0
-  b1 : Bits n
-  b1 = intToBits 1
   go : (k : Nat) -> (b : BitVector) -> (val : Bits n) -> Bits n
   go Z _  val = val
   go _ [] val = val
-  go (S k) (x :: xs) val = go k xs (if x then (shiftLeft b1 (intToBits (cast k))) `or` val else val)
+  go (S k) (x :: xs) val = go k xs (if x then (shiftLeft bitsOne (intToBits (cast k))) `or` val else val)

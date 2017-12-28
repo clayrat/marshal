@@ -101,12 +101,12 @@ stringCodec =
 vectCodec : Codec a -> Codec (Vect n a)
 vectCodec {n} cdc =
   MkCodec
-    (MkEncoder $ \la =>
-      foldl (\att,a => att <+> encode cdc a) (MkAttempt $ Right $ BitVector.empty) la
+    (MkEncoder $ \va =>
+      foldl (\att,a => att <+> encode cdc a) (pure BitVector.empty) va
     )
     (MkDecoder $ \bitv => go n bitv Z [])  -- TODO a ^ param
   where
-  go : (d : Nat) -> BitVector ->(k : Nat) -> Vect k a -> Attempt (DecodeRes (Vect n a))  -- recurse on nat to convince termination checker
+  go : (d : Nat) -> BitVector -> (k : Nat) -> Vect k a -> Attempt (DecodeRes (Vect n a))  -- recurse on nat to convince termination checker
   go Z bv k v = 
     MkAttempt $
     case decEq k n of 
@@ -121,6 +121,26 @@ vectCodec {n} cdc =
           MkAttempt (Left err) => MkAttempt (Left err)
           MkAttempt (Right (MkDecodeRes x rem)) => 
             go d rem (S k) (rewrite plusCommutative 1 k in v ++ [x])
+
+vectNCodec : Codec a -> Codec (DPair Nat (\n => Vect n a))
+vectNCodec {a} cdc = 
+  let sizeCdc = natCodec 8 in -- TODO configure? 
+  MkCodec
+    (MkEncoder $ \(n**v) => encode sizeCdc n <+> foldl (\att,a => att <+> encode cdc a) (pure BitVector.empty) v)
+    (MkDecoder $ \bitv => 
+      do (MkDecodeRes n r1) <- decode sizeCdc bitv
+         (MkDecodeRes v r2) <- go n r1 []
+         pure (MkDecodeRes (n ** v) r2)
+    )
+  where 
+  go : (n : Nat) -> BitVector -> Vect m a -> Attempt (DecodeRes (Vect (m+n) a))  
+  go {m} Z    rem acc = pure (MkDecodeRes (rewrite plusCommutative m 0 in acc) rem)
+  go {m} (S k) rem acc = 
+    case decode cdc rem of
+      MkAttempt (Left err) => MkAttempt (Left err)
+      MkAttempt (Right (MkDecodeRes x rem)) => 
+        rewrite plusAssociative m 1 k in 
+        go k rem (acc ++ [x])
 
 -- write sizes of both? mark greedy?
 pairCodec : (cdca : Codec a) -> (cdcb : Codec b) -> Codec (Pair a b)            
