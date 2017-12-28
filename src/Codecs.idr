@@ -175,7 +175,7 @@ eitherTaggedCodec cdca@(MkCodec _ da) cdcb@(MkCodec _ db) =
          Right b => encode cdct True <+> encode cdcb b)
     (MkDecoder $ \bitv =>
       do (MkDecodeRes t r1) <- decode cdct bitv
-         (MkDecodeRes ab r2) <- if t then runD (map Right db) r1 else runD (map Left da) r1
+         (MkDecodeRes ab r2) <- runD (if t then map Right db else map Left da) r1 
          pure (MkDecodeRes ab r2))
 
           {-

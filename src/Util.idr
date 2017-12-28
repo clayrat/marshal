@@ -1,6 +1,7 @@
 module Util
 
 import Data.Primitives.Views
+import Data.Bits
 
 %default total
 %access public export
@@ -13,6 +14,13 @@ pow2 n with (integerRec n)
   pow2 n | IntegerSucc v = 2 * pow2 (n-1) | v
   pow2 _ | IntegerPred _ = 0
 
+divMod8 : Integer -> (Integer, Integer)  
+divMod8 n with (divides n 8)
+  divMod8 ((8 * div) + rem) | DivBy _ = (div, rem)
+
+Cast Integer Int where
+    cast = prim__truncBigInt_Int
+  
 -- Double
 
 norm : Double -> (Integer, Double)

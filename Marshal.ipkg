@@ -3,7 +3,13 @@ package Marshal
 sourcedir = src
 modules = Util
         , BitVector
+        , ByteVector
         , Core
         , Codecs
+        , Main
 
-opts = "--partial-eval"
+main = Main
+
+executable = exec
+
+opts = "-p contrib --partial-eval"
